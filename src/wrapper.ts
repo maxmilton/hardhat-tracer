@@ -39,7 +39,7 @@ class TracerWrapper extends ProviderWrapper {
         isEthCall ||
         isEstimateGas) &&
       (!!this.dependencies.tracerEnv.printNext ||
-        this.dependencies.tracerEnv.verbosity > 2);
+        this.dependencies.tracerEnv.verbosity > 0);
 
     if (shouldTrace) {
       await this.dependencies.tracerEnv.switch!.enable();

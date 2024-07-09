@@ -49,6 +49,26 @@ describe("Hello", () => {
     }
   });
 
+  it("should work for reverted", async () => {
+    const hello = await hre.ethers.getContractAt(
+      "Hello",
+      "0x0000000000000000000000000000001234567890",
+      wallet
+    );
+
+    try {
+      await hello.hi2(
+        [
+          { id: 1, id2: 1 },
+          { id: 2, id2: 1 },
+        ],
+        { value: parseEther("1") }
+      );
+    } catch {}
+
+    expect(!!hre.tracer.lastTrace()).to.be.true;
+  });
+
   it("should ignore next", async () => {
     console.log("========> hello.kick()");
     const hello = await hre.ethers.getContractAt(

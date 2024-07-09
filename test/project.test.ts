@@ -47,10 +47,17 @@ describe("Hardhat Runtime Environment extension", function () {
     //   await this.hre.run("compile");
     // });
 
-    it("test works", async function () {
+    it("test trace works", async function () {
       await this.hre.run("compile");
       await this.hre.run("test", {
         trace: true,
+      });
+    });
+
+    it("test traceError works", async function () {
+      await this.hre.run("compile");
+      await this.hre.run("test", {
+        traceError: true,
       });
     });
   });
