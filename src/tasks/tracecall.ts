@@ -12,8 +12,8 @@ addCliParams(task("tracecall", "Traces a call"))
   .addParam("to", "destination address")
   .addOptionalParam("data", "input call data")
   .addOptionalParam("value", "value to send")
-  .addOptionalParam("gasLimit", "gas limit")
-  .addOptionalParam("gasPrice", "gas price")
+  .addOptionalParam("gaslimit", "gas limit")
+  .addOptionalParam("gasprice", "gas price")
   .addOptionalParam("blocknumber", "block number")
   .addOptionalParam("from", "from address")
   .addOptionalParam("rpc", "archive node")
@@ -88,8 +88,8 @@ addCliParams(task("tracecall", "Traces a call"))
         to: args.to,
         data: args.data,
         value: args.value,
-        gasLimit: args.gasLimit,
-        gasPrice: args.gasPrice,
+        gasLimit: args.gaslimit,
+        gasPrice: args.gasprice,
         from: args.from,
       });
       console.log("eth_call result:", result);
