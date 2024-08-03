@@ -180,8 +180,11 @@ describe("Hello", () => {
       wallet
     );
     // hre.tracer.printNext = true;
-    await contract.precompiles({
+    const tx = await contract.precompiles({
       gasLimit: 10_000_000,
     });
+
+    console.log("debug tt");
+    await hre.ethers.provider.send("debug_traceTransaction", [tx.hash]);
   });
 });

@@ -31,13 +31,15 @@ class TracerWrapper extends ProviderWrapper {
     const isSendRawTransaction = args.method === "eth_sendRawTransaction";
     const isEthCall = args.method === "eth_call";
     const isEstimateGas = args.method === "eth_estimateGas";
+    const isDebugTraceTransaction = args.method === "debug_traceTransaction";
 
     const shouldTrace =
       this.dependencies.tracerEnv.enabled &&
       (isSendTransaction ||
         isSendRawTransaction ||
         isEthCall ||
-        isEstimateGas) &&
+        isEstimateGas ||
+        isDebugTraceTransaction) &&
       (!!this.dependencies.tracerEnv.printNext ||
         this.dependencies.tracerEnv.verbosity > 0);
 
@@ -78,7 +80,8 @@ class TracerWrapper extends ProviderWrapper {
             (isSendTransaction ||
               isSendRawTransaction ||
               isEthCall ||
-              isEstimateGasFailed));
+              isEstimateGasFailed ||
+              isDebugTraceTransaction));
         break;
       case 3:
       case 4:
@@ -86,7 +89,8 @@ class TracerWrapper extends ProviderWrapper {
           isSendTransaction ||
           isSendRawTransaction ||
           isEthCall ||
-          isEstimateGasFailed;
+          isEstimateGasFailed ||
+          isDebugTraceTransaction;
         break;
       default:
         throw new Error(
