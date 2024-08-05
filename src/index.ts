@@ -28,5 +28,10 @@ yarn add hardhat@latest
 import "./chai";
 import "./extend";
 import "./tasks";
+
+export * from "./format";
+export * from "./opcodes";
+export * from "./print";
 export * from "./types";
 export * from "./wrapper";
+export * from "./utils";
