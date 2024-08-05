@@ -1,8 +1,8 @@
 import hre from "hardhat";
 
-import { wrapHardhatProvider } from "../../../../src/wrapper";
+import { wrapTracer } from "../../../../src/wrapper";
 
-wrapHardhatProvider(hre);
+wrapTracer(hre, hre.network.provider);
 hre.tracer.enabled = true;
 hre.tracer.verbosity = 3;
 

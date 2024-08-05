@@ -21,6 +21,8 @@ export async function getVMFromBaseProvider(
  * the ethereumjs-vm instance (provider._node._vm). So it's quite useful to be able to find this
  * object reliably!
  *
+ * Credits: this code adapted from smock.
+ *
  * @param hre hardhat runtime environment to pull the base provider from.
  * @return base hardhat network provider
  */
@@ -39,7 +41,7 @@ export const getHardhatBaseProvider = async (
   let provider: any = runtime.network.provider;
 
   // This is a no-op if the provider is already initialized.
-  await provider.init();
+  if (provider.init) await provider.init();
 
   while (provider._wrapped !== undefined) {
     provider = provider._wrapped;
@@ -48,7 +50,7 @@ export const getHardhatBaseProvider = async (
     currentLoopIterations += 1;
     if (currentLoopIterations > maxLoopIterations) {
       throw new Error(
-        `[smock]: unable to find base hardhat provider. are you sure you're running locally?`
+        `unable to find base hardhat provider. are you sure you're running locally?`
       );
     }
   }

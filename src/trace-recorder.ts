@@ -36,6 +36,7 @@ interface NewContractEvent {
 export class TraceRecorder {
   public vm: MinimalEthereumJsVm;
   public previousTraces: TransactionTrace[] = [];
+  public previousTracesMap: Map<string, TransactionTrace> = new Map();
   public trace: TransactionTrace | undefined;
   public previousOpcode: string | undefined;
   public tracerEnv: TracerEnv;
@@ -57,6 +58,17 @@ export class TraceRecorder {
     vm.evm.events?.on("step", this.handleStep.bind(this));
     vm.evm.events?.on("afterMessage", this.handleAfterMessage.bind(this));
     vm.events.on("afterTx", this.handleAfterTx.bind(this));
+  }
+
+  public storeLastTrace(txHash: string) {
+    const lastTrace = this.previousTraces[this.previousTraces.length - 1];
+    if (lastTrace) {
+      this.previousTracesMap.set(txHash.toLowerCase(), lastTrace);
+    }
+  }
+
+  public getTrace(txHash: string) {
+    return this.previousTracesMap.get(txHash.toLowerCase());
   }
 
   public handleBeforeTx(

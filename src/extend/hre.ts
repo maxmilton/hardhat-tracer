@@ -36,10 +36,18 @@ extendEnvironment((hre) => {
   // @ts-ignore
   global.hreArtifacts = hre.artifacts;
 
+  debug("getting hardhat base provider");
   getHardhatBaseProvider(hre)
-    .then((provider) => (hre.tracer.switch = new Switch(provider)))
+    .then((provider) => {
+      hre.tracer.switch = new Switch(provider);
+      debug("tracer.switch created");
+    })
     .then(() => {
-      addRecorder(hre).catch(console.error);
+      addRecorder(hre)
+        .then(() => {
+          debug("trace recorder added");
+        })
+        .catch(console.error);
     });
 
   debug("environment extended!");

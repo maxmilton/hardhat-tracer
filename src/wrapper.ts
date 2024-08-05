@@ -2,12 +2,17 @@ import { BackwardsCompatibilityProviderAdapter } from "hardhat/internal/core/pro
 import { ProviderWrapper } from "hardhat/internal/core/providers/wrapper";
 import {
   EIP1193Provider,
+  EthereumProvider,
   HardhatRuntimeEnvironment,
   RequestArguments,
 } from "hardhat/types";
+import createDebug from "debug";
 
 import { print } from "./print";
-import { TracerDependencies } from "./types";
+import { ProviderLike, TracerDependencies } from "./types";
+import { getTxHash } from "./utils/tx-hash";
+
+const debug = createDebug("hardhat-tracer:wrapper");
 
 /**
  * Wrapped provider which extends requests
@@ -22,6 +27,7 @@ class TracerWrapper extends ProviderWrapper {
   }
 
   public async request(args: RequestArguments): Promise<unknown> {
+    debug(`wrapped request ${args.method}`);
     let result;
     let error: any;
     // console.log("wrapper->args.method", args.method);
@@ -45,6 +51,7 @@ class TracerWrapper extends ProviderWrapper {
 
     if (shouldTrace) {
       await this.dependencies.tracerEnv.switch!.enable();
+      debug("Tracing switch enabled");
     }
     try {
       result = await this.dependencies.provider.send(
@@ -56,6 +63,7 @@ class TracerWrapper extends ProviderWrapper {
     }
     if (shouldTrace) {
       await this.dependencies.tracerEnv.switch!.disable();
+      debug("Tracing switch disabled");
     }
 
     const isSendTransactionFailed = isSendTransaction && !!error;
@@ -98,13 +106,21 @@ class TracerWrapper extends ProviderWrapper {
             this.dependencies.tracerEnv.verbosity
         );
     }
-
+    debug(
+      `shouldPrint=${shouldPrint}, tracer.enabled: ${this.dependencies.tracerEnv.enabled}, tracer.ignoreNext=${this.dependencies.tracerEnv.ignoreNext}, tracer.printNext=${this.dependencies.tracerEnv.printNext}`
+    );
     if (this.dependencies.tracerEnv.enabled && shouldPrint) {
       if (this.dependencies.tracerEnv.ignoreNext) {
         this.dependencies.tracerEnv.ignoreNext = false;
       } else {
         const lastTrace = this.dependencies.tracerEnv.lastTrace();
         if (lastTrace) {
+          const hash = getTxHash(args, result);
+          if (hash) {
+            this.dependencies.tracerEnv.recorder?.storeLastTrace(hash);
+            lastTrace.hash = hash;
+          }
+
           // TODO first check if this trace is what we want to print, i.e. tally the transaction hash.
           this.dependencies.tracerEnv.printNext = false;
           await print(lastTrace, this.dependencies);
@@ -129,13 +145,22 @@ If you think this is a bug please create issue at https://github.com/zemse/hardh
  * Add hardhat-tracer to your environment
  * @param hre: HardhatRuntimeEnvironment - required to get access to contract artifacts and tracer env
  */
-export function wrapHardhatProvider(hre: HardhatRuntimeEnvironment) {
-  wrapProvider(
+export function wrapTracer(
+  hre: HardhatRuntimeEnvironment,
+  provider: ProviderLike
+): EthereumProvider {
+  // do not wrap if already wrapped
+  if (isTracerAlreadyWrappedInHreProvider(hre)) {
+    debug("hre provider is already wrapped with TracerWrapper");
+    return hre.network.provider;
+  }
+  debug("Wrapping hre provider with TracerWrapper");
+  return wrapProvider(
     hre,
     new TracerWrapper({
       artifacts: hre.artifacts,
       tracerEnv: hre.tracer,
-      provider: hre.network.provider,
+      provider: provider ?? hre.network.provider,
     })
   );
 }
@@ -143,14 +168,10 @@ export function wrapHardhatProvider(hre: HardhatRuntimeEnvironment) {
 export function wrapProvider(
   hre: HardhatRuntimeEnvironment,
   wrapper: ProviderWrapper
-) {
-  // do not wrap if already wrapped
-  if (isTracerAlreadyWrappedInHreProvider(hre)) {
-    return;
-  }
-
+): EthereumProvider {
   const compatibleProvider = new BackwardsCompatibilityProviderAdapter(wrapper);
   hre.network.provider = compatibleProvider;
+  return hre.network.provider;
 }
 
 export function isTracerAlreadyWrappedInHreProvider(

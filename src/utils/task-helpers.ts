@@ -4,14 +4,14 @@ import {
   HardhatRuntimeEnvironment,
 } from "hardhat/types";
 
-import { wrapHardhatProvider } from "../wrapper";
+import { wrapTracer } from "../wrapper";
 
 import { checkIfOpcodesAreValid } from "./check-opcodes";
 
 export function registerTask(taskName: string) {
   return createTracerTask(taskName).setAction(
     (args: any, hre: HardhatRuntimeEnvironment, runSuper: any) => {
-      wrapHardhatProvider(hre);
+      wrapTracer(hre, hre.network.provider);
       return runTask(args, hre, runSuper);
     }
   );
