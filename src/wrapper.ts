@@ -171,8 +171,26 @@ export function wrapProvider(
   hre: HardhatRuntimeEnvironment,
   wrapper: ProviderWrapper
 ): EthereumProvider {
+  // get existing listeners and remove them from the provider
+  let eventListeners: { [key: string | symbol]: Array<Function> } = {};
+  for (const eventName of hre.network.provider.eventNames()) {
+    eventListeners[eventName] = [];
+    for (const listener of hre.network.provider.listeners(eventName)) {
+      eventListeners[eventName].push(listener);
+    }
+    hre.network.provider.removeAllListeners(eventName);
+  }
+
   const compatibleProvider = new BackwardsCompatibilityProviderAdapter(wrapper);
   hre.network.provider = compatibleProvider;
+
+  // re-register the listeners
+  for (const [eventName, listeners] of Object.entries(eventListeners)) {
+    for (const listener of listeners) {
+      hre.network.provider.on(eventName, listener as any);
+    }
+  }
+
   return hre.network.provider;
 }
 
