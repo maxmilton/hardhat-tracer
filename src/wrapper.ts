@@ -34,7 +34,7 @@ class TracerWrapper extends ProviderWrapper {
     let error: any;
     // console.log("wrapper->args.method", args.method);
 
-    // take decision whether to print last trace or not
+    // print trace for verbosity 3 and 4
     const traceWhitelist = [
       "eth_sendTransaction",
       "eth_sendRawTransaction",
@@ -42,6 +42,14 @@ class TracerWrapper extends ProviderWrapper {
       "eth_estimateGas",
       "debug_traceTransaction",
       "evm_mine",
+    ];
+
+    // print trace for verbosity 1 and 2
+    const traceErrorWhitelist = [
+      "eth_sendTransaction",
+      "eth_sendRawTransaction",
+      "eth_call",
+      "eth_estimateGas",
     ];
 
     const shouldTrace =
@@ -53,6 +61,7 @@ class TracerWrapper extends ProviderWrapper {
       await tracerEnv.switch!.enable();
       debug("Tracing switch enabled");
     }
+
     try {
       result = await this.dependencies.provider.send(
         args.method,
@@ -61,20 +70,21 @@ class TracerWrapper extends ProviderWrapper {
     } catch (_error) {
       error = _error;
     }
+
     if (shouldTrace) {
       await tracerEnv.switch!.disable();
       debug("Tracing switch disabled");
     }
 
-    const traceErrorWhitelist = [
-      "eth_sendTransaction",
-      "eth_sendRawTransaction",
-      "eth_call",
-      "eth_estimateGas",
-    ];
+    // infer tx hash and store in the trace
+    const lastTrace = tracerEnv.lastTrace();
+    const txHash = getTxHash(args, result);
+    if (lastTrace && txHash) {
+      tracerEnv.recorder?.storeLastTrace(txHash);
+      lastTrace.hash = txHash;
+    }
 
     let shouldPrint: boolean;
-
     switch (tracerEnv.verbosity) {
       case 0:
         shouldPrint = !!tracerEnv.printNext;
@@ -102,14 +112,7 @@ class TracerWrapper extends ProviderWrapper {
       if (tracerEnv.ignoreNext) {
         tracerEnv.ignoreNext = false;
       } else {
-        const lastTrace = tracerEnv.lastTrace();
         if (lastTrace) {
-          const hash = getTxHash(args, result);
-          if (hash) {
-            tracerEnv.recorder?.storeLastTrace(hash);
-            lastTrace.hash = hash;
-          }
-
           // TODO first check if this trace is what we want to print, i.e. tally the transaction hash.
           tracerEnv.printNext = false;
 
