@@ -188,21 +188,20 @@ describe("Hello", () => {
     await hre.ethers.provider.send("debug_traceTransaction", [tx.hash]);
   });
 
-  it("sample", async () => {
-    await hre.network.provider.send("evm_mine");
-
+  it("sample evm_increaseTime", async () => {
     const contract = await hre.ethers.getContractAt(
       "Hello",
       "0x0000000000000000000000000000001234567890",
       wallet
     );
-    // hre.tracer.printNext = true;
+
     const tx1 = await contract.sample("hello");
+
+    expect(hre.tracer.lastTrace()?.hash).to.eq(tx1.hash);
+
+    await hre.network.provider.send("evm_increaseTime", [1000]);
+
     const tx2 = await contract.sample("hello2");
-
-    await hre.network.provider.send("evm_mine");
-
-    console.log("debug tt");
-    await hre.ethers.provider.send("debug_traceTransaction", [tx1.hash]);
+    expect(hre.tracer.lastTrace()?.hash).to.eq(tx2.hash);
   });
 });

@@ -42,7 +42,9 @@ contract Hello {
     uint256 id2;
   }
 
-  function sample(string memory input) external {}
+  function sample(string memory input) external {
+    emit WhatsUp2(block.timestamp);
+  }
 
   function hi2(Info[] memory) public payable {
     assembly {
