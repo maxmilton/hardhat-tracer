@@ -27,30 +27,30 @@ class TracerWrapper extends ProviderWrapper {
   }
 
   public async request(args: RequestArguments): Promise<unknown> {
+    const tracerEnv = this.dependencies.tracerEnv;
+
     debug(`wrapped request ${args.method}`);
     let result;
     let error: any;
     // console.log("wrapper->args.method", args.method);
 
     // take decision whether to print last trace or not
-    const isSendTransaction = args.method === "eth_sendTransaction";
-    const isSendRawTransaction = args.method === "eth_sendRawTransaction";
-    const isEthCall = args.method === "eth_call";
-    const isEstimateGas = args.method === "eth_estimateGas";
-    const isDebugTraceTransaction = args.method === "debug_traceTransaction";
+    const traceWhitelist = [
+      "eth_sendTransaction",
+      "eth_sendRawTransaction",
+      "eth_call",
+      "eth_estimateGas",
+      "debug_traceTransaction",
+      "evm_mine",
+    ];
 
     const shouldTrace =
-      this.dependencies.tracerEnv.enabled &&
-      (isSendTransaction ||
-        isSendRawTransaction ||
-        isEthCall ||
-        isEstimateGas ||
-        isDebugTraceTransaction) &&
-      (!!this.dependencies.tracerEnv.printNext ||
-        this.dependencies.tracerEnv.verbosity > 0);
+      tracerEnv.enabled &&
+      traceWhitelist.includes(args.method) &&
+      (!!tracerEnv.printNext || tracerEnv.verbosity > 0);
 
     if (shouldTrace) {
-      await this.dependencies.tracerEnv.switch!.enable();
+      await tracerEnv.switch!.enable();
       debug("Tracing switch enabled");
     }
     try {
@@ -62,68 +62,64 @@ class TracerWrapper extends ProviderWrapper {
       error = _error;
     }
     if (shouldTrace) {
-      await this.dependencies.tracerEnv.switch!.disable();
+      await tracerEnv.switch!.disable();
       debug("Tracing switch disabled");
     }
 
-    const isSendTransactionFailed = isSendTransaction && !!error;
-    const isSendRawTransactionFailed = isSendRawTransaction && !!error;
-    const isEthCallFailed = isEthCall && !!error;
-    const isEstimateGasFailed = isEstimateGas && !!error;
+    const traceErrorWhitelist = [
+      "eth_sendTransaction",
+      "eth_sendRawTransaction",
+      "eth_call",
+      "eth_estimateGas",
+    ];
 
     let shouldPrint: boolean;
 
-    switch (this.dependencies.tracerEnv.verbosity) {
+    switch (tracerEnv.verbosity) {
       case 0:
-        shouldPrint = !!this.dependencies.tracerEnv.printNext;
+        shouldPrint = !!tracerEnv.printNext;
         break;
       case 1:
       case 2:
         shouldPrint =
-          isSendTransactionFailed ||
-          isSendRawTransactionFailed ||
-          isEthCallFailed ||
-          isEstimateGasFailed ||
-          (!!this.dependencies.tracerEnv.printNext &&
-            (isSendTransaction ||
-              isSendRawTransaction ||
-              isEthCall ||
-              isEstimateGasFailed ||
-              isDebugTraceTransaction));
+          (!!error && traceErrorWhitelist.includes(args.method)) ||
+          (!!tracerEnv.printNext && traceWhitelist.includes(args.method));
         break;
       case 3:
       case 4:
-        shouldPrint =
-          isSendTransaction ||
-          isSendRawTransaction ||
-          isEthCall ||
-          isEstimateGasFailed ||
-          isDebugTraceTransaction;
+        shouldPrint = traceWhitelist.includes(args.method);
         break;
       default:
         throw new Error(
-          "[hardhat-tracer]: Invalid verbosity value: " +
-            this.dependencies.tracerEnv.verbosity
+          "[hardhat-tracer]: Invalid verbosity value: " + tracerEnv.verbosity
         );
     }
     debug(
-      `shouldPrint=${shouldPrint}, tracer.enabled: ${this.dependencies.tracerEnv.enabled}, tracer.ignoreNext=${this.dependencies.tracerEnv.ignoreNext}, tracer.printNext=${this.dependencies.tracerEnv.printNext}`
+      `shouldPrint=${shouldPrint}, tracer.enabled: ${tracerEnv.enabled}, tracer.ignoreNext=${tracerEnv.ignoreNext}, tracer.printNext=${tracerEnv.printNext}`
     );
-    if (this.dependencies.tracerEnv.enabled && shouldPrint) {
-      if (this.dependencies.tracerEnv.ignoreNext) {
-        this.dependencies.tracerEnv.ignoreNext = false;
+
+    if (tracerEnv.enabled && shouldPrint) {
+      if (tracerEnv.ignoreNext) {
+        tracerEnv.ignoreNext = false;
       } else {
-        const lastTrace = this.dependencies.tracerEnv.lastTrace();
+        const lastTrace = tracerEnv.lastTrace();
         if (lastTrace) {
           const hash = getTxHash(args, result);
           if (hash) {
-            this.dependencies.tracerEnv.recorder?.storeLastTrace(hash);
+            tracerEnv.recorder?.storeLastTrace(hash);
             lastTrace.hash = hash;
           }
 
           // TODO first check if this trace is what we want to print, i.e. tally the transaction hash.
-          this.dependencies.tracerEnv.printNext = false;
-          await print(lastTrace, this.dependencies);
+          tracerEnv.printNext = false;
+
+          // print all the pending traces
+          const pendingTraces = tracerEnv.recorder!.previousTraces.slice(
+            tracerEnv.recorder!.printIndex + 1
+          );
+          for (const trace of pendingTraces) {
+            await print(trace, this.dependencies);
+          }
         } else {
           console.warn(
             `Hardhat Tracer wanted to print trace, but lastTrace is undefined. 
@@ -132,6 +128,12 @@ If you think this is a bug please create issue at https://github.com/zemse/hardh
           );
         }
       }
+    }
+
+    // advancing the printIndex
+    if (tracerEnv.recorder) {
+      tracerEnv.recorder.printIndex =
+        tracerEnv.recorder.previousTraces.length - 1;
     }
 
     if (error) {

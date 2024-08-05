@@ -42,6 +42,8 @@ contract Hello {
     uint256 id2;
   }
 
+  function sample(string memory input) external {}
+
   function hi2(Info[] memory) public payable {
     assembly {
       mstore(0, 0)

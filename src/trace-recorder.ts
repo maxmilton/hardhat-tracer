@@ -36,6 +36,7 @@ interface NewContractEvent {
 export class TraceRecorder {
   public vm: MinimalEthereumJsVm;
   public previousTraces: TransactionTrace[] = [];
+  public printIndex = -1;
   public previousTracesMap: Map<string, TransactionTrace> = new Map();
   public trace: TransactionTrace | undefined;
   public previousOpcode: string | undefined;
