@@ -23,7 +23,7 @@ const config: HardhatUserConfig = {
     },
     mainnet: {
       chainId: 1,
-      url: "https://eth-mainnet.alchemyapi.io/v2/" + process.env.ALCHEMY,
+      url: "https://eth-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY,
     },
     arbitrum: {
       url: "https://arb-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY,
